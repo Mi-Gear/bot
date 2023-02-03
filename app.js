@@ -122,7 +122,7 @@ client.on('messageCreate',message =>
 
       break;
     }
-    case 'unsub':
+    case 'unsub-hent':
     {
       const channels = JSON.parse(fs.readFileSync(config.hentaiChannels));
 
