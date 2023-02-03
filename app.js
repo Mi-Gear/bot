@@ -5,6 +5,7 @@ const client = new Discord.Client({ intents: [GatewayIntentBits.Guilds, GatewayI
 const fs = require('fs');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, Events } = require('discord.js');
 const {EmbedBuilder} = require('discord.js');
+
 class Player
 {
   constructor(name)
@@ -15,6 +16,12 @@ class Player
   gold = 250;
   inventory = []
 }
+
+client.on('ready', () => {
+  console.log("Всё работает, папаша");
+  Send();
+});
+
 client.on('messageCreate',message =>
 {
   if (message.author.bot || !message.content.startsWith(config.prefix))
@@ -65,7 +72,76 @@ client.on('messageCreate',message =>
         let p = file[num].player
         sendEmbedPlayerProfile(p,channel)
       }
-    break
+    break;
+    //Команда try [args...] - попробовать что-либо.
+    case 'try': 
+    {
+      let rand = Math.floor(Math.random()*2);
+      let string = args.toString().replace(',', ' ');
+
+      if(string.length == 0) {
+        message.channel.send("Вы не сказали, что хотели бы попробовать!\nСинтаксис: "+config.prefix+"try args (делать дз - например)");
+      }
+      else{
+        if(rand == 0) message.channel.send(string + " - не удачно");
+        else message.channel.send(string + " - удачно");
+      }
+      break;
+    }
+    //Подписка и отписка канала на хентай рассылку
+    case 'sub-hent':
+    {
+      const channels = JSON.parse(fs.readFileSync(config.hentaiChannels));
+      let isHaseChannel = false;
+
+      for(let i = 0; i < channels.length; i ++)
+      {
+        if(channels[i] == message.channel.id)
+        {
+          isHaseChannel = true;
+          break;
+        }
+      }
+
+      if(isHaseChannel == true)
+      {
+        message.channel.send("Этот канал уже подписан на рассылку");
+      }
+      else
+      {
+        if(message.channel.nsfw == false){
+          message.channel.send("Этот канал не NSFW!\nПереключите его в режим NSFW!");
+        }
+        else{
+          channels.push(message.channel.id);
+          const newChannels = JSON.stringify(channels);
+          fs.writeFileSync(config.hentaiChannels, newChannels);
+          message.channel.send("Этот канал подписан на рассылку");
+        }
+      }
+
+      break;
+    }
+    case 'unsub':
+    {
+      const channels = JSON.parse(fs.readFileSync(config.hentaiChannels));
+
+      for(let i = 0; i < channels.length; i ++)
+      {
+        if(channels[i] == message.channel.id)
+        {
+          channels.splice(i, 1); 
+          const newChannels = JSON.stringify(channels);
+          fs.writeFileSync(config.hentaiChannels, newChannels);
+
+          message.channel.send("Этот канал отписан от рассылки");
+          return;
+        }
+      }
+
+      message.channel.send("Этот канал не подписан на рассылку");
+      break;
+    }
     default:
       message.channel.send("Нет такой команды дурак")
       break
@@ -82,16 +158,16 @@ function sendEmbedPlayerProfile(p,channel)
     fields:[{name: 'hp',value: p.hp,inline: true}, {name:'gold', value:p.gold,inline: true},],
   }
   const Row = new ActionRowBuilder()
-  .addComponents(new ButtonBuilder()
-  .setCustomId('inventory')
-  .setLabel('Inventory')
-  .setStyle(ButtonStyle.Success))
-  channel.send({embeds:[Info],components:[Row]})
-}
+    .addComponents(new ButtonBuilder()
+    .setCustomId('inventory')
+    .setLabel('Inventory')
+    .setStyle(ButtonStyle.Success))
+    channel.send({embeds:[Info],components:[Row]})
+  }
 })
 
 function playerExist(id)
-  {
+{
     var file = JSON.parse(fs.readFileSync(config.players,'utf-8'))
     for(let i = 0; i < file.length;i++)
     {
@@ -101,8 +177,7 @@ function playerExist(id)
       }
     }
     return -1
-  }
-client.once(Events.ClientReady, function(){console.log("Всё работает, папаша")})
+}
 
 client.on('interactionCreate',interaction => {
   if(!interaction.isButton())return;
@@ -124,4 +199,24 @@ client.on('interactionCreate',interaction => {
     break
   }
 })
+
+function Send(){
+  var hentaiSender = setInterval (function () {
+    SendHentai();
+  }, config.timeToSend * 1000); 
+}
+
+function SendHentai(){
+  const channels = JSON.parse(fs.readFileSync(config.hentaiChannels));
+  channels.forEach(id => {
+    const url = config.hentaiImages+GetRandomInt(42).toString()+".jpg";
+    console.log(url);
+    client.channels.cache.get(id).send(url);
+  });
+}
+
+function GetRandomInt(max) {
+  return Math.floor(Math.random() * max);
+}
+
 client.login(config.token)
